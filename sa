@@ -1,0 +1,50 @@
+IF (SELECT state_desc FROM sys.databases 
+            WHERE name = N'WCCGLive') = N'RESTORING'
+            BEGIN
+  RAISERROR('Database is mirror copy, job will terminate',16, -1) END
+
+
+
+
+
+DECLARE @newoutput varchar(max)
+set @newoutput = ''
+set @newoutput = 'FAO WCCG,'
+set @newoutput = 'Can this call be passed to WCCG Support team for creating the WCCG Monthly Reports and distribute them to the relevant NWIS and Health Board contacts.' + @crlf + @crlf
+set @newoutput = @newoutput + @output + @crlf + @crlf + @crlf
+set @newoutput = @newoutput + '(This is an Automated mail, the call is raised for creating the WCCG Monthly Reports)'
+--set @newoutput = @newoutput + @crlf + @crlf +'Sent from Automated Job: Check WCCG Support Monthly reporting (WCCGSupport)'
+--
+-- SQL Code that builds a distribution list from the database and not hardcoded
+--
+--get email recipients modified
+DECLARE @emailaddress VARCHAR(200)
+DECLARE @recipientlist VARCHAR(max)
+SET @recipientlist = ''  -- This is TWO single quotes
+
+
+DECLARE emailaddresses CURSOR FOR 
+SELECT emailaddress FROM emailrecipientList
+WHERE reportid = 8 
+OPEN emailaddresses
+--DECLARE @emailBody varchar(max) = 'Please note: you must Save the attached file to a local drive, then open Excel separately and Import for it to be formatted correctly.'
+fetch next from emailaddresses into @emailAddress
+
+WHILE @@fetch_status = 0
+	
+	BEGIN
+		SET @recipientlist = @recipientlist + @emailaddress + ';'
+		FETCH NEXT FROM emailaddresses INTO @emailAddress
+	END
+--end of get email recipients modified
+
+SET @title = 'TEST V4: Automated Mail - '+ @total_Messages + '   WCCG Dead Messages  !!!' 
+
+--send mail
+EXEC msdb.dbo.sp_send_dbmail
+@profile_name= 'WCCG Reports',
+@recipients= 'PrimaryCareGatewayServices@wales.nhs.uk' 
+,  @subject = @title
+,@body =  @newoutput
+
+END
