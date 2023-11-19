@@ -1,104 +1,31 @@
-IF (SELECT state_desc FROM sys.databases 
-            WHERE name = N'WCCGLive') = N'RESTORING'
-            BEGIN
-  RAISERROR('Database is mirror copy, job will terminate',16, -1) END
-
-
-
-
-
-DECLARE @newoutput varchar(max)
-set @newoutput = ''
-set @newoutput = 'FAO WCCG,'
-set @newoutput = 'Can this call be passed to WCCG Support team for creating the WCCG Monthly Reports and distribute them to the relevant NWIS and Health Board contacts.' + @crlf + @crlf
-set @newoutput = @newoutput + @output + @crlf + @crlf + @crlf
-set @newoutput = @newoutput + '(This is an Automated mail, the call is raised for creating the WCCG Monthly Reports)'
---set @newoutput = @newoutput + @crlf + @crlf +'Sent from Automated Job: Check WCCG Support Monthly reporting (WCCGSupport)'
---
--- SQL Code that builds a distribution list from the database and not hardcoded
---
---get email recipients modified
-DECLARE @emailaddress VARCHAR(200)
-DECLARE @recipientlist VARCHAR(max)
-SET @recipientlist = ''  -- This is TWO single quotes
-
-
-DECLARE emailaddresses CURSOR FOR 
-SELECT emailaddress FROM emailrecipientList
-WHERE reportid = 8 
-OPEN emailaddresses
---DECLARE @emailBody varchar(max) = 'Please note: you must Save the attached file to a local drive, then open Excel separately and Import for it to be formatted correctly.'
-fetch next from emailaddresses into @emailAddress
-
-WHILE @@fetch_status = 0
-	
-	BEGIN
-		SET @recipientlist = @recipientlist + @emailaddress + ';'
-		FETCH NEXT FROM emailaddresses INTO @emailAddress
-	END
---end of get email recipients modified
-
-SET @title = 'TEST V4: Automated Mail - '+ @total_Messages + '   WCCG Dead Messages  !!!' 
-
---send mail
-EXEC msdb.dbo.sp_send_dbmail
-@profile_name= 'WCCG Reports',
-@recipients= 'PrimaryCareGatewayServices@wales.nhs.uk' 
-,  @subject = @title
-,@body =  @newoutput
-
+IF (SELECT mirroring_role FROM sys.database_mirroring
+WHERE database_id=db_id(N'WCCGTest19SIT')) = '2'
+BEGIN
+   RAISERROR('Database is mirror copy job will terminate',16, -1)
 END
 
 
 
+USE WCCGTest19SIT
+DECLARE @tab char(1) = CHAR(9)
+DECLARE @BodyOutput VARCHAR (MAX)
+DECLARE @crlf char(1)
+SET @crlf = char(13)
+DECLARE @Subject Varchar(Max)
+DECLARE @attachment_filename Varchar(Max)
+SET @attachment_filename = CONVERT(VARCHAR(10), getdate(), 105) + ' - WCCG Inactive User Report.csv'
+SET @Subject = 'WCCG: Inactive User Report'
+SET @BodyOutput = 'Please find attached a WCCG Inactive User report for all Practices.
 
-
-
-
-
-CREATE PROCEDURE dbo.SendAutomaticEmail
-AS
-BEGIN
-    DECLARE @Subject NVARCHAR(255) = 'Your Email Subject'
-    DECLARE @Body NVARCHAR(MAX) = 'Your Email Body'
-    DECLARE @Recipients NVARCHAR(255) = 'recipient@example.com'
-    
-    -- Use sp_send_dbmail to send the email
-    EXEC msdb.dbo.sp_send_dbmail
-        @profile_name = 'YourMailProfile',  -- Specify your mail profile
-        @recipients = @Recipients,
-        @subject = @Subject,
-        @body = @Body;
-END;
-
-
-
-
-USE msdb;
-GO
-
-EXEC dbo.sp_add_job
-    @job_name = 'SendAutomaticEmailJob',
-    @enabled = 1;
-
-EXEC dbo.sp_add_jobstep
-    @job_name = 'SendAutomaticEmailJob',
-    @step_name = 'SendEmailStep',
-    @subsystem = 'TSQL',
-    @command = 'EXEC dbo.SendAutomaticEmail';
-
--- Schedule the job to run daily at a specific time (adjust as needed)
-EXEC dbo.sp_add_schedule
-    @schedule_name = 'DailySchedule',
-    @freq_type = 4,  -- Daily
-    @freq_interval = 1,  -- Every day
-    @active_start_time = 100000;  -- Adjust the time as needed
-
-EXEC dbo.sp_attach_schedule
-    @job_name = 'SendAutomaticEmailJob',
-    @schedule_name = 'DailySchedule';
-
--- Link the job and the schedule
-EXEC dbo.sp_add_jobserver
-    @job_name = 'SendAutomaticEmailJob',
-    @server_name = 'YourServerName';  -- Specify your server name
+This report identifies WCCG Users that have not logged into WCCG within the last 18 months.
+'
+SET @BodyOutput= @BodyOutput + @crlf + @crlf +'Sent from Automated Job: WCCG Inactive User Report - SIT'
+EXEC msdb.dbo.sp_send_dbmail
+    @profile_name = 'WCCG Reports',
+    @recipients = 'Drew.Hyman@wales.nhs.uk',
+    ,@subject = @Subject
+    ,@body = @BodyOutput
+    ,@attach_query_result_as_file = 1
+    ,@query_attachment_filename=  @attachment_filename
+    ,@query_result_separator=@tab
+    ,@query_result_no_padding=1
