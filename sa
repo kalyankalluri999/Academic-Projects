@@ -71,3 +71,34 @@ BEGIN
         @body = @Body;
 END;
 
+
+
+
+USE msdb;
+GO
+
+EXEC dbo.sp_add_job
+    @job_name = 'SendAutomaticEmailJob',
+    @enabled = 1;
+
+EXEC dbo.sp_add_jobstep
+    @job_name = 'SendAutomaticEmailJob',
+    @step_name = 'SendEmailStep',
+    @subsystem = 'TSQL',
+    @command = 'EXEC dbo.SendAutomaticEmail';
+
+-- Schedule the job to run daily at a specific time (adjust as needed)
+EXEC dbo.sp_add_schedule
+    @schedule_name = 'DailySchedule',
+    @freq_type = 4,  -- Daily
+    @freq_interval = 1,  -- Every day
+    @active_start_time = 100000;  -- Adjust the time as needed
+
+EXEC dbo.sp_attach_schedule
+    @job_name = 'SendAutomaticEmailJob',
+    @schedule_name = 'DailySchedule';
+
+-- Link the job and the schedule
+EXEC dbo.sp_add_jobserver
+    @job_name = 'SendAutomaticEmailJob',
+    @server_name = 'YourServerName';  -- Specify your server name
