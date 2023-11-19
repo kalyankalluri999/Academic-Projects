@@ -48,3 +48,26 @@ EXEC msdb.dbo.sp_send_dbmail
 ,@body =  @newoutput
 
 END
+
+
+
+
+
+
+
+
+CREATE PROCEDURE dbo.SendAutomaticEmail
+AS
+BEGIN
+    DECLARE @Subject NVARCHAR(255) = 'Your Email Subject'
+    DECLARE @Body NVARCHAR(MAX) = 'Your Email Body'
+    DECLARE @Recipients NVARCHAR(255) = 'recipient@example.com'
+    
+    -- Use sp_send_dbmail to send the email
+    EXEC msdb.dbo.sp_send_dbmail
+        @profile_name = 'YourMailProfile',  -- Specify your mail profile
+        @recipients = @Recipients,
+        @subject = @Subject,
+        @body = @Body;
+END;
+
